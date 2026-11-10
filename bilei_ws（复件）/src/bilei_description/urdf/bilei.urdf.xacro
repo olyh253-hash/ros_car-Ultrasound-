@@ -1,0 +1,197 @@
+<?xml version="1.0"?>
+<robot name="bilei" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- =========================================================
+       1. 全局参数：以后改尺寸只动这里
+       ========================================================= -->
+  <xacro:property name="body_x"       value="0.250"/>
+  <xacro:property name="body_y"       value="0.180"/>
+  <xacro:property name="body_z"       value="0.080"/>
+  <xacro:property name="body_mass"    value="0.600"/>
+
+  <xacro:property name="wheel_radius" value="0.033"/>
+  <xacro:property name="wheel_width"  value="0.026"/>
+  <xacro:property name="wheel_mass"   value="0.050"/>
+  <xacro:property name="wheel_sep"    value="0.200"/>   <!-- 左右轮中心距，标定用 -->
+  <xacro:property name="wheel_base"   value="0.170"/>   <!-- 前后轮中心距 -->
+
+  <xacro:property name="leg_length"   value="0.090"/>
+  <xacro:property name="leg_mass"     value="0.030"/>
+
+  <xacro:property name="ground_clearance" value="${wheel_radius}"/>
+
+  <!-- =========================================================
+       2. 材质
+       ========================================================= -->
+  <material name="gray">  <color rgba="0.35 0.35 0.38 1"/></material>
+  <material name="black"> <color rgba="0.05 0.05 0.05 1"/></material>
+  <material name="orange"><color rgba="1.00 0.45 0.00 1"/></material>
+  <material name="blue">  <color rgba="0.10 0.45 0.90 1"/></material>
+  <material name="green"> <color rgba="0.10 0.75 0.30 1"/></material>
+
+  <!-- =========================================================
+       3. 惯量宏
+       ========================================================= -->
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m*(y*y+z*z)/12}" ixy="0" ixz="0"
+               iyy="${m*(x*x+z*z)/12}" iyz="0"
+               izz="${m*(x*x+y*y)/12}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cyl_inertia" params="m r h">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m*(3*r*r+h*h)/12}" ixy="0" ixz="0"
+               iyy="${m*(3*r*r+h*h)/12}" iyz="0"
+               izz="${m*r*r/2}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- =========================================================
+       4. 车体
+       ========================================================= -->
+  <link name="base_footprint"/>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child  link="base_link"/>
+    <origin xyz="0 0 ${ground_clearance + body_z/2}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
+    <visual>
+      <geometry><box size="${body_x} ${body_y} ${body_z}"/></geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <geometry><box size="${body_x} ${body_y} ${body_z}"/></geometry>
+    </collision>
+    <xacro:box_inertia m="${body_mass}" x="${body_x}" y="${body_y}" z="${body_z}"/>
+  </link>
+
+  <!-- =========================================================
+       5. 轮子宏：4 个轮子复用一个宏
+       ========================================================= -->
+  <xacro:macro name="wheel" params="name x y">
+    <link name="${name}_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
+        <material name="black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
+      </collision>
+      <xacro:cyl_inertia m="${wheel_mass}" r="${wheel_radius}" h="${wheel_width}"/>
+    </link>
+
+    <joint name="${name}_joint" type="continuous">
+      <parent link="base_link"/>
+      <child  link="${name}_link"/>
+      <origin xyz="${x} ${y} ${-(body_z/2)}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:wheel name="wheel_fl" x="${ wheel_base/2}" y="${ wheel_sep/2}"/>
+  <xacro:wheel name="wheel_fr" x="${ wheel_base/2}" y="${-wheel_sep/2}"/>
+  <xacro:wheel name="wheel_rl" x="${-wheel_base/2}" y="${ wheel_sep/2}"/>
+  <xacro:wheel name="wheel_rr" x="${-wheel_base/2}" y="${-wheel_sep/2}"/>
+
+  <!-- =========================================================
+       6. 腿宏：每个腿 1 自由度（舵机）
+          角度 0     = 腿水平收起（默认姿态，不碰地）
+          角度 1.57  = 腿竖直向下 = 撑起，车身最高
+       ========================================================= -->
+  <xacro:macro name="leg" params="name x y">
+    <link name="${name}_leg">
+      <visual>
+        <origin xyz="0 0 ${-leg_length/2}"/>
+        <geometry><box size="0.012 0.012 ${leg_length}"/></geometry>
+        <material name="orange"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${-leg_length/2}"/>
+        <geometry><box size="0.012 0.012 ${leg_length}"/></geometry>
+      </collision>
+      <xacro:box_inertia m="${leg_mass}" x="0.012" y="0.012" z="${leg_length}"/>
+    </link>
+
+    <joint name="${name}_leg_joint" type="revolute">
+      <parent link="base_link"/>
+      <child  link="${name}_leg"/>
+      <origin xyz="${x} ${y} ${-body_z/2}" rpy="0 ${-pi/2} 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="0.0" upper="1.5708" effort="2.0" velocity="3.0"/>
+      <dynamics damping="0.02" friction="0.01"/>
+    </joint>
+
+    <link name="${name}_foot">
+      <visual>
+        <geometry><sphere radius="0.009"/></geometry>
+        <material name="green"/>
+      </visual>
+      <collision>
+        <geometry><sphere radius="0.009"/></geometry>
+      </collision>
+      <xacro:box_inertia m="0.005" x="0.018" y="0.018" z="0.018"/>
+    </link>
+
+    <joint name="${name}_foot_joint" type="fixed">
+      <parent link="${name}_leg"/>
+      <child  link="${name}_foot"/>
+      <origin xyz="0 0 ${-leg_length}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:leg name="leg_fl" x="${ body_x/2 - 0.02}" y="${ body_y/2 - 0.02}"/>
+  <xacro:leg name="leg_fr" x="${ body_x/2 - 0.02}" y="${-body_y/2 + 0.02}"/>
+  <xacro:leg name="leg_rl" x="${-body_x/2 + 0.02}" y="${ body_y/2 - 0.02}"/>
+  <xacro:leg name="leg_rr" x="${-body_x/2 + 0.02}" y="${-body_y/2 + 0.02}"/>
+
+  <!-- =========================================================
+       7. 传感器：相机 + 3 路超声波
+       ========================================================= -->
+  <link name="camera_link">
+    <visual>
+      <geometry><box size="0.030 0.060 0.025"/></geometry>
+      <material name="blue"/>
+    </visual>
+    <xacro:box_inertia m="0.020" x="0.030" y="0.060" z="0.025"/>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="camera_link"/>
+    <origin xyz="${body_x/2 + 0.015} 0 ${body_z/2 + 0.012}" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:macro name="sonar" params="name x y yaw">
+    <link name="${name}_link">
+      <visual>
+        <geometry><box size="0.020 0.030 0.012"/></geometry>
+        <material name="green"/>
+      </visual>
+      <xacro:box_inertia m="0.008" x="0.020" y="0.030" z="0.012"/>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child  link="${name}_link"/>
+      <origin xyz="${x} ${y} 0.010" rpy="0 0 ${yaw}"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:sonar name="sonar_front" x="${body_x/2}" y="0"             yaw="0"/>
+  <xacro:sonar name="sonar_left"  x="${body_x/2 - 0.05}" y="${ body_y/2}" yaw="${ 0.35}"/>
+  <xacro:sonar name="sonar_right" x="${body_x/2 - 0.05}" y="${-body_y/2}" yaw="${-0.35}"/>
+
+  <!-- =========================================================
+       8. Gazebo 专用插件（RViz 下不生效）
+       ========================================================= -->
+  <xacro:include filename="$(find bilei_description)/urdf/bilei.gazebo.xacro"/>
+
+</robot>

@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<!--
+  Gazebo 专用插件（RViz 下不生效）
+  轮型：麦克纳姆全向轮（4 轮，X 型布置）
+
+  包含：
+    1. planar_move  全向运动 + 里程计
+    2. joint_state_publisher  关节状态
+    3. camera       单目相机 /camera/image_raw
+    4. sonar x3     超声波 /range/front|left|right
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- 材质 -->
+  <gazebo reference="base_link">
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+  <gazebo reference="wheel_fl_link"><material>Gazebo/Black</material></gazebo>
+  <gazebo reference="wheel_fr_link"><material>Gazebo/Black</material></gazebo>
+  <gazebo reference="wheel_rl_link"><material>Gazebo/Black</material></gazebo>
+  <gazebo reference="wheel_rr_link"><material>Gazebo/Black</material></gazebo>
+  <gazebo reference="camera_link"><material>Gazebo/Blue</material></gazebo>
+
+  <!-- ================= 1. 全向运动 ================= -->
+  <gazebo>
+    <plugin name="planar_move" filename="libgazebo_ros_planar_move.so">
+      <ros>
+        <namespace>/</namespace>
+      </ros>
+      <update_rate>50</update_rate>
+      <command_topic>cmd_vel</command_topic>
+      <odometry_topic>odom</odometry_topic>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
+    </plugin>
+  </gazebo>
+
+  <!-- ================= 2. 关节状态 ================= -->
+  <gazebo>
+    <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so">
+      <ros>
+        <namespace>/</namespace>
+      </ros>
+      <update_rate>30</update_rate>
+      <joint_name>wheel_fl_joint</joint_name>
+      <joint_name>wheel_fr_joint</joint_name>
+      <joint_name>wheel_rl_joint</joint_name>
+      <joint_name>wheel_rr_joint</joint_name>
+      <joint_name>leg_fl_leg_joint</joint_name>
+      <joint_name>leg_fr_leg_joint</joint_name>
+      <joint_name>leg_rl_leg_joint</joint_name>
+      <joint_name>leg_rr_leg_joint</joint_name>
+    </plugin>
+  </gazebo>
+
+  <!-- ================= 3. 相机 ================= -->
+  <gazebo reference="camera_link">
+    <sensor name="camera" type="camera">
+      <always_on>true</always_on>
+      <update_rate>15</update_rate>
+      <visualize>false</visualize>
+      <camera>
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+          <width>320</width>
+          <height>240</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.05</near>
+          <far>10.0</far>
+        </clip>
+      </camera>
+      <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+        <ros>
+          <namespace>/</namespace>
+        </ros>
+        <camera_name>camera</camera_name>
+        <frame_name>camera_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ================= 4. 超声波（单波束 ray 模拟） ================= -->
+  <xacro:macro name="sonar_sensor" params="name topic">
+    <gazebo reference="${name}_link">
+      <sensor name="${name}_sensor" type="ray">
+        <always_on>true</always_on>
+        <update_rate>10</update_rate>
+        <visualize>false</visualize>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>2</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.13</min_angle>
+              <max_angle>0.13</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.02</min>
+            <max>4.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+          </noise>
+        </ray>
+        <plugin name="${name}_plugin" filename="libgazebo_ros_ray_sensor.so">
+          <ros>
+            <namespace>/</namespace>
+            <remapping>~/out:=${topic}</remapping>
+          </ros>
+          <!-- 注：本机 gazebo_ros_ray_sensor 的 Range 输出有 bug，改用 LaserScan + range_bridge 转换 -->
+          <output_type>sensor_msgs/LaserScan</output_type>
+          <radiation_type>ultrasound</radiation_type>
+          <frame_name>${name}_link</frame_name>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:sonar_sensor name="sonar_front" topic="range_raw/front"/>
+  <xacro:sonar_sensor name="sonar_left"  topic="range_raw/left"/>
+  <xacro:sonar_sensor name="sonar_right" topic="range_raw/right"/>
+
+</robot>

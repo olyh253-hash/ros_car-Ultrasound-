@@ -1,0 +1,71 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <physics type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_update_rate>1000</real_time_update_rate>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- 前方 1.2m 处的障碍箱 -->
+    <model name="box_front">
+      <static>true</static>
+      <pose>1.2 0 0.15 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
+          <material><ambient>0.8 0.2 0.2 1</ambient><diffuse>0.8 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 左侧 0.8m 处的障碍柱 -->
+    <model name="cylinder_left">
+      <static>true</static>
+      <pose>0.6 0.8 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><cylinder><radius>0.12</radius><length>0.5</length></cylinder></geometry></collision>
+        <visual name="v">
+          <geometry><cylinder><radius>0.12</radius><length>0.5</length></cylinder></geometry>
+          <material><ambient>0.2 0.4 0.9 1</ambient><diffuse>0.2 0.4 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 右侧 0.8m 处的障碍柱 -->
+    <model name="cylinder_right">
+      <static>true</static>
+      <pose>0.6 -0.8 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><cylinder><radius>0.12</radius><length>0.5</length></cylinder></geometry></collision>
+        <visual name="v">
+          <geometry><cylinder><radius>0.12</radius><length>0.5</length></cylinder></geometry>
+          <material><ambient>0.2 0.7 0.3 1</ambient><diffuse>0.2 0.7 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 2cm 高的小台阶（后面测越障用） -->
+    <model name="step_low">
+      <static>true</static>
+      <pose>2.0 0.5 0.01 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.6 0.4 0.02</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.6 0.4 0.02</size></box></geometry>
+          <material><ambient>0.6 0.6 0.6 1</ambient><diffuse>0.6 0.6 0.6 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <gui>
+      <camera name="user_camera">
+        <pose>-1.5 -1.5 1.0 0 0 0.785</pose>
+      </camera>
+    </gui>
+  </world>
+</sdf>
